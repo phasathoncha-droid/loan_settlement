@@ -241,7 +241,20 @@ Onigiri ──API──► LSS
 | 5 | `UPDATE_FACILITY` | `HAS_FACILITY` | Link the new loan account to the existing facility in Ectoplasm. Non-blocking. |
 | 6 | `SEND_INSURANCE_CONFIRM` | `HAS_INSURANCE` | Send insurance confirmation to the appropriate service. Routes based on insurance type (see [Section 9](#9-insurance-routing-logic-common)). Non-blocking. |
 
-### 5.4 Facility Update — New Book
+### 5.4 Success Definition — New Book
+
+Settlement is published as **successful immediately after `CREATE_LOAN` succeeds** in Gringotts. All remaining Phase 3 steps (CREATE_SAP_CONTRACT, CREATE_BOOKKEEPING_ACCOUNT, UPDATE_FACILITY, SEND_INSURANCE_CONFIRM) are **optional**. If any of them fail, the settlement remains successful and the failed step will be investigated and fixed separately.
+
+| Step | Blocks Settlement Success? |
+|------|--------------------------|
+| `VALIDATE_SETTLEMENT` | ✅ Yes — must pass before execution proceeds |
+| `CREATE_LOAN` | ✅ Yes — success is published after this step |
+| `CREATE_SAP_CONTRACT` | ❌ No — optional, failure handled separately |
+| `CREATE_BOOKKEEPING_ACCOUNT` | ❌ No — optional, failure handled separately |
+| `UPDATE_FACILITY` | ❌ No — optional, failure handled separately |
+| `SEND_INSURANCE_CONFIRM` | ❌ No — optional, failure handled separately |
+
+### 5.5 Facility Update — New Book
 
 Applies when `HAS_FACILITY` condition is met.
 
@@ -358,14 +371,14 @@ Applies when `HAS_INSURANCE` condition is met on the `SEND_INSURANCE_CONFIRM` st
 
 ### Settlement Success
 
-Settlement is considered **successful and published to Onigiri/DaVinci** immediately after `CREATE_LOAN` in Gringotts succeeds. All subsequent Phase 3 steps (SAP, Bookkeeping, Facility, Insurance) are non-blocking — their outcomes do not affect the settlement success publication.
+Settlement is published as **successful immediately after `CREATE_LOAN` succeeds** in Gringotts. All remaining Phase 3 steps — `CREATE_SAP_CONTRACT`, `CREATE_BOOKKEEPING_ACCOUNT`, `UPDATE_FACILITY`, and `SEND_INSURANCE_CONFIRM` — are **optional**. Their success or failure does not affect the settlement outcome. If any optional step fails, it will be investigated and fixed separately without impacting the settlement record.
 
-### Non-Blocking Step Failure and Retry
+### Optional Step Failure and Retry
 
-For each non-blocking Phase 3 step (CREATE_SAP_CONTRACT, CREATE_BOOKKEEPING_ACCOUNT, UPDATE_FACILITY, SEND_INSURANCE_CONFIRM):
+For each optional Phase 3 step (CREATE_SAP_CONTRACT, CREATE_BOOKKEEPING_ACCOUNT, UPDATE_FACILITY, SEND_INSURANCE_CONFIRM):
 
 1. On failure, LSS retries the step automatically up to **3 attempts**.
-2. If all 3 attempts fail, LSS publishes a failure event to Onigiri.
+2. If all 3 attempts fail, LSS publishes a failure event to Onigiri for awareness.
 
 ### Phase 2 Failure (HAS_FTR only)
 
