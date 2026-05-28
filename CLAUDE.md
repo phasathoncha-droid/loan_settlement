@@ -27,12 +27,33 @@ LSS is a backend orchestration service that finalises the financial settlement o
 
 ## Orchestration Model
 
-Settlement execution is driven by a **phase/step configuration stored in the database**. Each settlement event type (e.g. `LOAN_NEWBOOK`) has phases with ordered steps. Steps can be conditional (e.g. only run if the loan has a facility, or only run if the loan has insurance). The sequence can differ per loan type.
+Settlement execution is driven by a **phase/step configuration stored in the database**. Each settlement event type has phases with ordered steps. Steps can be conditional (e.g. only run if the loan has a facility, or only run if the loan has insurance).
 
 Phases: `1 = API` → `2 = MQ (transfer only)` → `3 = WORKER`
 
-Settlement is published as **successful once CREATE_LOAN in Gringotts succeeds**. All subsequent Phase 3 steps are non-blocking — failures are retried up to 3 times independently and do not affect the success publication.
+Settlement is **complete the moment the core Gringotts step succeeds** — `LoanSettled` is published to Onigiri and DaVinci immediately. LSS then continues the remaining Phase 3 steps as **fire-and-forget background operations**.
 
-## Requirements Document
+## Loan Products
 
-See [Loan_Settlement_Requirements.md](Loan_Settlement_Requirements.md) for full flow details, business rules, action specifications, and integration contracts.
+| Product | Event Code | File |
+|---------|-----------|------|
+| New Book | `LOAN_NEWBOOK` | [LOAN_NEWBOOK.md](LOAN_NEWBOOK.md) |
+| Top-Up | `LOAN_TOPUP` | [LOAN_TOPUP.md](LOAN_TOPUP.md) |
+| Restructure | `LOAN_RESTRUCTURE` | [LOAN_RESTRUCTURE.md](LOAN_RESTRUCTURE.md) |
+
+## Requirements Documents
+
+| Document | Description |
+|----------|-------------|
+| [Loan_Settlement_Requirements.md](Loan_Settlement_Requirements.md) | Index — links to all product specs and explains how to add a new loan product |
+| [LSS_Overview.md](LSS_Overview.md) | System overview — rules, events, orchestration model |
+| [LOAN_NEWBOOK.md](LOAN_NEWBOOK.md) | Full spec for New Book |
+| [LOAN_TOPUP.md](LOAN_TOPUP.md) | Full spec for Top-Up |
+| [LOAN_RESTRUCTURE.md](LOAN_RESTRUCTURE.md) | Full spec for Restructure |
+
+## Adding a New Loan Product
+
+When a new product is added:
+1. Create `LOAN_<EVENTCODE>.md` following the structure of existing product files
+2. Add a row to the Loan Product Summary table in `Loan_Settlement_Requirements.md`
+3. Add a row to the Loan Products table above in this file
